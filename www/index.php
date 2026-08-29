@@ -1,20 +1,22 @@
 <?php
 require_once("db.php");
 
-// 検索キーワードをそのままSQLに連結している(SQLインジェクション脆弱性)
 $keyword = isset($_GET['keyword']) ? $_GET['keyword'] : '';
 
+// 検索キーワードはプレースホルダでバインドする(SQLインジェクション対策)。
 if ($keyword != '') {
-    $sql = "SELECT * FROM products WHERE name LIKE '%" . $keyword . "%' ORDER BY id DESC";
+    $stmt = mysqli_prepare($conn, "SELECT * FROM products WHERE name LIKE ? ORDER BY id DESC");
+    $like = '%' . $keyword . '%';
+    mysqli_stmt_bind_param($stmt, 's', $like);
+    mysqli_stmt_execute($stmt);
+    $result = mysqli_stmt_get_result($stmt);
 } else {
-    $sql = "SELECT * FROM products ORDER BY id DESC";
+    $result = mysqli_query($conn, "SELECT * FROM products ORDER BY id DESC");
 }
 
-$result = mysql_query($sql, $conn);
-
 if (!$result) {
-    // クエリ失敗時にエラー内容をそのまま画面に出力してしまっている(情報漏洩)
-    die("クエリ失敗: " . mysql_error());
+    // クエリ失敗時の詳細は画面に出さない。
+    die("クエリ失敗");
 }
 ?>
 <!DOCTYPE html>
@@ -42,7 +44,7 @@ if (!$result) {
             <th>在庫数</th>
             <th>操作</th>
         </tr>
-        <?php while ($row = mysql_fetch_assoc($result)) { ?>
+        <?php while ($row = mysqli_fetch_assoc($result)) { ?>
         <tr>
             <td><?php echo $row['id']; ?></td>
             <td><?php echo $row['sku']; ?></td>

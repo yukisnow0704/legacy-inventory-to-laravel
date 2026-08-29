@@ -1,18 +1,18 @@
 <?php
-// DB接続情報がソースコードに直書き(ハードコード)されている。
-// 本番用の認証情報がgit管理下のファイルにそのまま残ってしまうアンチパターン。
-$host = "legacy-mysql";
-$user = "root";
-$pass = "my-secret-pw";
-$dbname = "legacy_inventory";
+// DB接続情報は環境変数から取得する(ソースコードに直書きしない)。
+// 実際の値は docker-compose.yml 経由で .env から注入される。
+$host = getenv('DB_HOST') ?: 'legacy-mysql';
+$user = getenv('DB_USER') ?: 'root';
+$pass = getenv('DB_PASSWORD') ?: '';
+$dbname = getenv('DB_NAME') ?: 'legacy_inventory';
 
-$conn = mysql_connect($host, $user, $pass);
+// mysql_* 拡張は PHP 7 で削除済み。mysqli へ移行し、以降のクエリは
+// プリペアドステートメントでバインドする(SQLインジェクション対策)。
+$conn = mysqli_connect($host, $user, $pass, $dbname);
 if (!$conn) {
-    // エラーメッセージに接続情報が漏れる可能性があり、かつ die()で処理が止まるだけで
-    // ログにも残らない。
-    die("DB接続に失敗しました: " . mysql_error());
+    // 詳細(接続情報を含みうる mysqli_connect_error())は画面に出さない。
+    die("DB接続に失敗しました");
 }
 
-mysql_select_db($dbname, $conn);
-mysql_query("SET NAMES utf8", $conn);
+mysqli_set_charset($conn, 'utf8');
 ?>

@@ -4,26 +4,25 @@ require_once("db.php");
 $error = '';
 
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
-    // 入力値のバリデーションが一切ない。
-    // 空文字・マイナス値・文字列(価格や在庫数に文字列が来た場合)などを弾く処理がない。
+    // 入力値のバリデーションは今回のスコープ外(フェーズ2)。
     $sku = $_POST['sku'];
     $name = $_POST['name'];
     $price = $_POST['price'];
     $stock_quantity = $_POST['stock_quantity'];
 
-    // ユーザー入力を文字列連結で直接SQLに埋め込んでいる(SQLインジェクション脆弱性)。
-    // 例えば name に \', (SELECT password FROM admin_users LIMIT 1), 0, 0) -- のような
-    // 値を送ると、任意のSQLが実行できてしまう。
-    $sql = "INSERT INTO products (sku, name, price, stock_quantity) VALUES ('"
-        . $sku . "', '" . $name . "', " . $price . ", " . $stock_quantity . ")";
-
-    $result = mysql_query($sql, $conn);
+    // ユーザー入力はプレースホルダでバインドする(SQLインジェクション対策)。
+    $stmt = mysqli_prepare(
+        $conn,
+        "INSERT INTO products (sku, name, price, stock_quantity) VALUES (?, ?, ?, ?)"
+    );
+    mysqli_stmt_bind_param($stmt, 'ssii', $sku, $name, $price, $stock_quantity);
+    $result = mysqli_stmt_execute($stmt);
 
     if ($result) {
         header("Location: index.php");
         exit;
     } else {
-        $error = "登録に失敗しました: " . mysql_error();
+        $error = "登録に失敗しました";
     }
 }
 ?>

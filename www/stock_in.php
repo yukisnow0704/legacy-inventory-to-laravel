@@ -6,32 +6,17 @@ $message = '';
 
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $id = $_POST['id'];
-    $qty = $_POST['qty'];
+    $qty = intval($_POST['qty']);
 
-    // --- ここが本質的な問題箇所 ---
-    // 1. 現在の在庫数をSELECTで読み取る
-    // 2. PHP側で加算した値を計算する
-    // 3. UPDATEで書き戻す
-    // という3ステップが1つのトランザクションになっておらず、ロックも取っていない。
-    // そのため、同時に複数のリクエストが来ると「更新の消失(lost update)」が発生する。
-    //
-    // 例: 在庫10個の商品に対し、同時に2つの入庫リクエスト(+5個ずつ)が来た場合
-    //   リクエストA: SELECT → 10を読む
-    //   リクエストB: SELECT → 10を読む(Aがまだ書き戻す前)
-    //   リクエストA: UPDATE → 15に更新
-    //   リクエストB: UPDATE → 15に更新(Aの更新を上書き)
-    //   本来は20になるはずが、15のままになってしまう(+5個分が消える)
-
-    $select_sql = "SELECT stock_quantity FROM products WHERE id = " . $id;
-    $result = mysql_query($select_sql, $conn);
-    $row = mysql_fetch_assoc($result);
-    $current_qty = $row['stock_quantity'];
-
-    $new_qty = $current_qty + intval($qty);
-
-    // このSELECTとUPDATEの間に他のリクエストが割り込む可能性がある(競合状態)
-    $update_sql = "UPDATE products SET stock_quantity = " . $new_qty . " WHERE id = " . $id;
-    mysql_query($update_sql, $conn);
+    // 「SELECT→PHPで加算→UPDATE」をやめ、DB側でアトミックに加算する。
+    // これにより同時リクエストでも更新の消失(lost update)が起きない。
+    // 値のバインドで SQLインジェクションも防ぐ。
+    $stmt = mysqli_prepare(
+        $conn,
+        "UPDATE products SET stock_quantity = stock_quantity + ? WHERE id = ?"
+    );
+    mysqli_stmt_bind_param($stmt, 'ii', $qty, $id);
+    mysqli_stmt_execute($stmt);
 
     header("Location: index.php");
     exit;
