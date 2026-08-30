@@ -1,0 +1,26 @@
+name: modern-laravel
+
+services:
+  laravel-web:
+    build: './php84'
+    container_name: laravel-web
+    tty: true
+    environment:
+      # Laravel は laravel/.env を読むが、コンテナ側にも渡しておく
+      - APP_ENV=local
+    ports:
+      # デバッグ用の直アクセス(本来の入口はリバースプロキシの 8080)
+      - "8085:80"
+    volumes:
+      - "../laravel:/var/www/html/laravel"
+    networks:
+      default:
+      inventory-net:
+        aliases:
+          - laravel-web
+
+networks:
+  # レガシー側 compose と共有する外部ネットワーク。
+  #   docker network create inventory-net
+  inventory-net:
+    external: true

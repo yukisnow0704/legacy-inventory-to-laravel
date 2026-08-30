@@ -7,6 +7,11 @@ services:
       - "3307:3306"
     volumes:
       - ./schema.sql:/docker-entrypoint-initdb.d/schema.sql
+    networks:
+      default:
+      inventory-net:
+        aliases:
+          - legacy-mysql
 
   legacy-web:
     build: './php56'
@@ -21,9 +26,15 @@ services:
       - "./www:/var/www/html"
       - "./verify_race_condition.sh:/var/www/verify_race_condition.sh"
       - "./characterization_tests.sh:/var/www/characterization_tests.sh"
+      - "./characterization_tests_via_proxy.sh:/var/www/characterization_tests_via_proxy.sh"
       - "./schema.sql:/var/www/schema.sql"
     depends_on:
       - legacy-mysql
+    networks:
+      default:
+      inventory-net:
+        aliases:
+          - legacy-web
 
   legacy-adminer:
     image: adminer:4.6
@@ -31,3 +42,9 @@ services:
       - legacy-mysql
     ports:
       - "8083:8080"
+
+networks:
+  # Laravel / リバースプロキシの compose と共有する外部ネットワーク。
+  #   docker network create inventory-net
+  inventory-net:
+    external: true

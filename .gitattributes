@@ -1,0 +1,8 @@
+# コンテナ内(Linux)で実行・マウントされるファイルは必ず LF に固定する。
+# Windows の core.autocrlf=true 環境でも CRLF に変換されないようにする。
+*.sh            text eol=lf
+Dockerfile      text eol=lf
+*.conf          text eol=lf
+docker-compose.yml text eol=lf
+schema.sql      text eol=lf
+*.php           text eol=lf
